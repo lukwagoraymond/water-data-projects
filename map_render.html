@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Simply Lovely-Water Supply Inventory Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; }
+    #map { height: 100vh; width: 100%; }
+    .header {
+      position: absolute; top: 10px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255,255,255,0.8);
+      padding: 6px 12px;
+      font-size: 1.2em;
+      font-weight: bold;
+      border-radius: 4px;
+      z-index: 1000;
+    }
+    .controls {
+      position: absolute; top: 50px; left: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 10px; border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      z-index: 1000;
+      width: 220px;
+    }
+    .controls label { display: block; margin: 8px 0; font-size: 0.9em; }
+    .controls select, .controls input[type=range] {
+      width: 100%; padding: 4px;
+      border: 1px solid #ccc; border-radius: 4px;
+    }
+    .controls input[type=checkbox] { margin-right: 4px; }
+    .legend {
+      position: absolute; bottom: 20px; right: 10px;
+      background: rgba(255,255,255,0.9);
+      padding: 8px 12px; border-radius: 6px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      font-size: 0.9em;
+      z-index: 1000;
+    }
+    .legend i {
+      width: 18px; height: 18px; display: inline-block;
+      margin-right: 6px; border-radius: 50%;
+      vertical-align: middle;
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">🌍 Simply Lovely System Inventory</div>
+
+  <div class="controls">
+    <label>
+      Min. Users Served: <span id="users-value">0</span>
+      <input type="range" id="filter-users" min="0" max="1000" step="1" value="0">
+    </label>
+    <label>
+      Funding Source:
+      <select id="filter-fund"><option value="">All</option></select>
+    </label>
+    <label>
+      Management Type:
+      <select id="filter-mgmt"><option value="">All</option></select>
+    </label>
+    <label>
+      <input type="checkbox" id="toggle-functional" checked> Show Functional
+    </label>
+    <label>
+      <input type="checkbox" id="toggle-nonfunctional" checked> Show Non‑functional
+    </label>
+  </div>
+
+  <div id="map"></div>
+
+  <div class="legend">
+    <i style="background:green"></i> Functional<br>
+    <i style="background:red"></i> Non‑functional
+  </div>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script>
+    async function fetchAllData(url, page = 1, acc = []) {
+      const { data, pagination } = await (await fetch(`${url}?page=${page}`)).json();
+      acc.push(...data);
+      return pagination.hasNext ? fetchAllData(url, page + 1, acc) : acc;
+    }
+
+    (async function() {
+      const apiUrl = 'https://excelapi-studio.vercel.app/api/projects/west-nile-water-supply-inventory/endpoints/west-nile-water-supply-inventory';
+      const allData = await fetchAllData(apiUrl);
+
+      const fundSel = document.getElementById('filter-fund');
+      const mgmtSel = document.getElementById('filter-mgmt');
+      [...new Set(allData.map(d => d.Funding_source))].sort().forEach(s => fundSel.add(new Option(s, s)));
+      [...new Set(allData.map(d => d.Management_type))].sort().forEach(s => mgmtSel.add(new Option(s, s)));
+
+      const userSlider = document.getElementById('filter-users');
+      const userValue = document.getElementById('users-value');
+      const maxUsers = Math.max(...allData.map(d => +d.Total_users_served || 0));
+      userSlider.max = maxUsers;
+      userSlider.value = 0;
+      userValue.textContent = 0;
+
+      const map = L.map('map').setView([3.15,31.48],10);
+      L.tileLayer('https://api.maptiler.com/maps/backdrop/{z}/{x}/{y}@2x.png?key=1njvcQgXbARtuMY8GlbT', {
+      maxZoom:18, attribution:'© OpenStreetMap'
+      }).addTo(map);
+
+      const clusterGroup = L.markerClusterGroup();
+      [userSlider, fundSel, mgmtSel, document.getElementById('toggle-functional'), document.getElementById('toggle-nonfunctional')]
+        .forEach(el => el.addEventListener(el.type==='range'?'input':'change', applyFilters));
+
+      function applyFilters() {
+        const minUsers = +userSlider.value;
+        userValue.textContent = minUsers;
+        const fund = fundSel.value;
+        const mgmt = mgmtSel.value;
+        const showFunc = document.getElementById('toggle-functional').checked;
+        const showNon = document.getElementById('toggle-nonfunctional').checked;
+
+        clusterGroup.clearLayers();
+
+        allData.forEach(d => {
+          const users = +d.Total_users_served || 0;
+          const isFunc = d.Functionality.toLowerCase().includes('functional');
+          if (users < minUsers || (fund && d.Funding_source !== fund) ||
+              (mgmt && d.Management_type !== mgmt) ||
+              (isFunc && !showFunc) || (!isFunc && !showNon)) return;
+          if (d.Latitude==null || d.Longitude==null) return;
+
+          const marker = L.circleMarker([+d.Latitude, +d.Longitude], {
+            radius:7,
+            color: isFunc ? 'green' : 'red',
+            fillOpacity:0.8
+          }).bindPopup(`
+            <b>${d.Source_name}</b><br/>
+            Functionality: ${d.Functionality}<br/>
+            Users served: ${users}
+          `);
+          clusterGroup.addLayer(marker);
+        });
+
+        if (!map.hasLayer(clusterGroup)) map.addLayer(clusterGroup);
+      }
+
+      applyFilters();
+    })();
+  </script>
+</body>
+</html>
