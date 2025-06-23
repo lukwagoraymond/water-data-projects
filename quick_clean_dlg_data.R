@@ -5,7 +5,7 @@ library(dplyr)
 library(stringr)
 
 # Set current working directory
-setwd("/Users/raymondlukwago/Documents/WatSSUP/HYT_Grant/250621_district_water_data")
+setwd("{path-to-working-directory}")
 
 # Code line for clearing the Environment Panel
 rm(list=ls())
