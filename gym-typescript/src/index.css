@@ -1,0 +1,62 @@
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;700&family=Montserrat:wght@700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* colors */
+  --color-gray-20: #f8f4eb;
+  --color-gray-50: #efe6e6;
+  --color-gray-100: #dfcccc;
+  --color-gray-500: #5e0000;
+  --color-primary-100: #ffe1e0;
+  --color-primary-300: #ffa6a3;
+  --color-primary-500: #ff6b66;
+  --color-secondary-400: #ffcd5b;
+  --color-secondary-500: #ffc132;
+
+  /* background Images */
+  --bg-gradient-yellowred: linear-gradient(90deg, #FF616A 0%, #FFC837 100%);
+  --bg-mobile-home: url("./assets/HomePageGraphic.png");
+
+  /* font family */
+  --font-dmsans: "DM Sans", sans-serif;
+  --font-montserrat: "Montserrat", sans-serif;
+
+  /* Content */
+  --content-evolvetext: url("./assets/EvolveText.png");
+  --content-abstractwaves: url("./assets/AbstractWaves.png");
+  --content-sparkles: url("./assets/Sparkles.png");
+  --content-circles: url("./assets/Circles.png");
+
+  /* screens */
+  --screen-xs: 480px;
+  --screen-sm: 768px;
+  --screen-md: 1060px;
+}
+
+@layer base {
+  html, 
+  body,
+  #root,
+  .app {
+    height: 100%;
+    width: 100%;
+    font-family: var(--font-dmsans);
+    color: var(--color-gray-500);
+  }
+}
+
+/* Custom content classes */
+@layer utilities {
+  .before\:content-evolvetext::before {
+    content: var(--content-evolvetext);
+  }
+  .before\:content-abstractwaves::before {
+    content: var(--content-abstractwaves);
+  }
+  .before\:content-sparkles::before {
+    content: var(--content-sparkles);
+  }
+  .before\:content-circles::before {
+    content: var(--content-circles);
+  }
+}
